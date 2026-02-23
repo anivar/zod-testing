@@ -90,6 +90,8 @@ describe("UserSchema", () => {
 | `z.toJSONSchema()` snapshots | Schema shape testing | Detecting unintended schema changes |
 | Mock data generation | Fixture creation | Need valid/randomized test data |
 | Property-based testing | Fuzz testing | Schemas must handle arbitrary valid inputs |
+| Structural testing | Architecture | Verify schemas are only imported at boundaries |
+| Drift detection | Regression | Catch unintended schema changes via JSON Schema snapshots |
 
 ## Schema Correctness Testing
 
@@ -303,6 +305,10 @@ See [references/anti-patterns.md](references/anti-patterns.md) for BAD/GOOD exam
 - Not testing boundary values
 - Hardcoding mock data instead of generating
 - Snapshot testing raw ZodError instead of formatted output
+- Not testing at boundaries (schema tests pass but handler doesn't validate)
+- No snapshot regression testing (field removal goes unnoticed)
+- Testing schema shape but not error observability (never assert on flattenError)
+- No drift detection workflow (schema changes land without mechanical review)
 
 ## References
 
