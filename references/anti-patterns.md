@@ -12,6 +12,10 @@
 - Not testing optional/nullable combinations
 - Snapshot testing raw ZodError
 - Not seeding random data generators
+- Not testing at boundaries
+- No snapshot regression testing
+- Testing schema shape but not error observability
+- No drift detection workflow
 
 ## Testing schema internals instead of behavior
 
@@ -283,4 +287,103 @@ it("accepts generated data", () => {
   const user = fake(UserSchema) // same every run
   expect(UserSchema.safeParse(user).success).toBe(true)
 })
+```
+
+## Not testing at boundaries
+
+```typescript
+// BAD: schema unit tests pass but handler never calls safeParse
+// tests/user-schema.test.ts
+it("rejects invalid email", () => {
+  expect(UserSchema.safeParse({ email: "bad" }).success).toBe(false)
+})
+// But the actual handler does:
+app.post("/users", (req, res) => {
+  // No validation! req.body goes straight to the database
+  db.users.create(req.body)
+})
+
+// GOOD: integration test verifies the boundary actually validates
+it("API rejects invalid input with field errors", async () => {
+  const res = await request(app)
+    .post("/api/users")
+    .send({ name: "", email: "bad" })
+    .expect(400)
+
+  expect(res.body.errors.fieldErrors).toHaveProperty("email")
+})
+
+it("API accepts valid input", async () => {
+  const res = await request(app)
+    .post("/api/users")
+    .send({ name: "Alice", email: "alice@example.com", age: 30 })
+    .expect(201)
+})
+```
+
+## No snapshot regression testing
+
+```typescript
+// BAD: field removal goes unnoticed
+// Someone removes `role` from UserSchema — no test catches it
+const UserSchema = z.object({
+  name: z.string(),
+  email: z.email(),
+  // role was here — removed without anyone noticing
+})
+
+// GOOD: JSON Schema snapshot catches schema changes
+it("schema shape has not changed", () => {
+  const jsonSchema = z.toJSONSchema(UserSchema)
+  expect(jsonSchema).toMatchSnapshot()
+  // If `role` is removed, snapshot diff shows it clearly in code review
+})
+```
+
+## Testing schema shape but not error observability
+
+```typescript
+// BAD: tests verify schema accepts/rejects but never check error structure
+it("rejects invalid input", () => {
+  const result = UserSchema.safeParse({ email: "bad" })
+  expect(result.success).toBe(false)
+  // Never checks what the error looks like — logging could be broken
+})
+
+// GOOD: verify flattenError produces queryable structure
+it("produces structured errors for logging", () => {
+  const result = UserSchema.safeParse({ email: "bad" })
+  expect(result.success).toBe(false)
+  if (!result.success) {
+    const flat = z.flattenError(result.error)
+    expect(flat.fieldErrors).toHaveProperty("email")
+    expect(flat.fieldErrors.email![0]).toBeTruthy()
+    // Verifies that your logging pipeline will receive useful data
+  }
+})
+```
+
+## No drift detection workflow
+
+```typescript
+// BAD: schema changes land without mechanical review
+// Developer changes OrderSchema, no CI check, no snapshot diff
+// Consumers break silently because the field they depend on is gone
+
+// GOOD: export and diff JSON Schema snapshots in CI
+// scripts/export-schemas.ts
+import { z } from "zod"
+import { writeFileSync } from "fs"
+
+const jsonSchema = z.toJSONSchema(OrderSchema)
+writeFileSync(
+  "snapshots/Order.json",
+  JSON.stringify(jsonSchema, null, 2) + "\n"
+)
+
+// CI workflow:
+// 1. Run export-schemas.ts
+// 2. git diff snapshots/ — if changed, CI fails
+// 3. Developer reviews diff, updates snapshots intentionally
+// 4. Schema changes are always visible in code review
 ```

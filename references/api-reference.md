@@ -418,3 +418,183 @@ it("rejects invalid email", () => {
   expect(error.issues[0].path).toEqual(["email"])
 })
 ```
+
+## Structural Testing
+
+### Schema Dependency Direction
+
+Assert that schemas are imported from boundary layers, not from domain code. This enforces the architectural rule that parsing happens at boundaries.
+
+```typescript
+import { execSync } from "child_process"
+
+describe("schema architecture", () => {
+  it("domain layer does not import raw schemas", () => {
+    // grep for Zod schema imports in domain code
+    const result = execSync(
+      'grep -r "from.*schemas" src/domain/ || true',
+      { encoding: "utf-8" }
+    )
+    // Domain should only import types (z.infer), not raw schemas
+    const rawImports = result
+      .split("\n")
+      .filter((line) => line && !line.includes("type {") && !line.includes("type{"))
+    expect(rawImports).toHaveLength(0)
+  })
+})
+```
+
+### Circular Import Detection
+
+Use madge to detect circular dependencies between schema files:
+
+```typescript
+import madge from "madge"
+
+describe("schema dependencies", () => {
+  it("has no circular dependencies", async () => {
+    const result = await madge("src/", {
+      fileExtensions: ["ts"],
+      tsConfigPath: "tsconfig.json",
+    })
+    const circular = result.circular()
+    expect(circular).toHaveLength(0)
+  })
+})
+```
+
+## Drift Detection
+
+### JSON Schema Snapshot Workflow
+
+Export schemas as JSON Schema and commit snapshots. CI fails when schemas change without updating snapshots.
+
+```typescript
+// scripts/export-schemas.ts
+import { z } from "zod"
+import { writeFileSync, mkdirSync } from "fs"
+import { UserSchema, OrderSchema } from "../src/api/schemas"
+
+const schemas = { User: UserSchema, Order: OrderSchema }
+
+mkdirSync("snapshots", { recursive: true })
+for (const [name, schema] of Object.entries(schemas)) {
+  writeFileSync(
+    `snapshots/${name}.json`,
+    JSON.stringify(z.toJSONSchema(schema), null, 2) + "\n"
+  )
+}
+```
+
+### Snapshot Test
+
+```typescript
+import { readFileSync } from "fs"
+
+describe("schema drift detection", () => {
+  it("UserSchema matches committed snapshot", () => {
+    const current = z.toJSONSchema(UserSchema)
+    const committed = JSON.parse(
+      readFileSync("snapshots/User.json", "utf-8")
+    )
+    expect(current).toEqual(committed)
+  })
+})
+```
+
+### CI Integration
+
+```yaml
+# .github/workflows/schema-check.yml
+- run: npx tsx scripts/export-schemas.ts
+- name: Check for schema drift
+  run: |
+    if git diff --exit-code snapshots/; then
+      echo "Schemas unchanged"
+    else
+      echo "::error::Schema snapshots changed. Update snapshots if intentional."
+      git diff snapshots/
+      exit 1
+    fi
+```
+
+## Observable Error Testing
+
+### Assert flattenError Structure
+
+Test that validation errors produce the expected structured output for logging and monitoring.
+
+```typescript
+describe("error observability", () => {
+  it("flattenError has expected field keys", () => {
+    const result = UserSchema.safeParse({ name: "", email: "bad" })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const flat = z.flattenError(result.error)
+      // Verify structure matches what logging expects
+      expect(flat).toHaveProperty("formErrors")
+      expect(flat).toHaveProperty("fieldErrors")
+      expect(flat.fieldErrors).toHaveProperty("email")
+    }
+  })
+
+  it("error messages are user-facing quality", () => {
+    const Schema = z.object({
+      email: z.email({ error: "Please enter a valid email" }),
+      age: z.number({ error: "Age must be a number" }).min(0, "Age cannot be negative"),
+    })
+
+    const result = Schema.safeParse({ email: "bad", age: -1 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const flat = z.flattenError(result.error)
+      expect(flat.fieldErrors.email![0]).toBe("Please enter a valid email")
+      expect(flat.fieldErrors.age![0]).toBe("Age cannot be negative")
+    }
+  })
+})
+```
+
+## Performance Testing
+
+### Benchmark Parse Time
+
+```typescript
+describe("schema performance", () => {
+  it("UserSchema parses within acceptable time", () => {
+    const validUser = { name: "Alice", email: "alice@example.com", age: 30 }
+
+    const start = performance.now()
+    for (let i = 0; i < 10_000; i++) {
+      UserSchema.safeParse(validUser)
+    }
+    const elapsed = performance.now() - start
+
+    // 10k parses should complete in under 100ms
+    expect(elapsed).toBeLessThan(100)
+  })
+})
+```
+
+### With Vitest Bench
+
+```typescript
+import { bench, describe } from "vitest"
+
+describe("schema benchmarks", () => {
+  const validUser = { name: "Alice", email: "alice@example.com", age: 30 }
+
+  bench("UserSchema.safeParse", () => {
+    UserSchema.safeParse(validUser)
+  })
+
+  bench("UserSchema.safeParse (invalid)", () => {
+    UserSchema.safeParse({ name: 123 })
+  })
+})
+```
+
+Run with:
+```bash
+vitest bench
+```
