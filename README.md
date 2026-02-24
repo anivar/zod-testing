@@ -1,5 +1,7 @@
 # Zod Testing
 
+Created by **[Anivar Aravind](https://anivar.net)**
+
 An AI agent skill for testing Zod schemas with Jest and Vitest.
 
 ## The Problem
@@ -66,9 +68,29 @@ npx skills add https://github.com/anivar/zod-testing
     └── anti-patterns.md          # Common testing mistakes to avoid
 ```
 
-## Related
+## Ecosystem — Skills by [Anivar Aravind](https://anivar.net)
 
-- [zod-skill](https://github.com/anivar/zod-skill) — Full Zod v4 best practices skill (27 rules across parsing, schema design, error handling, architecture, observability, and more)
+### Testing Skills
+| Skill | What it covers | Install |
+|-------|---------------|---------|
+| [jest-skill](https://github.com/anivar/jest-skill) | Jest best practices — mock design, async testing, matchers, timers, snapshots | `npx skills add anivar/jest-skill -g` |
+| [msw-skill](https://github.com/anivar/msw-skill) | MSW 2.0 API mocking — handlers, responses, GraphQL | `npx skills add anivar/msw-skill -g` |
+| [redux-saga-testing](https://github.com/anivar/redux-saga-testing) | Redux-Saga testing — expectSaga, testSaga, providers | `npx skills add anivar/redux-saga-testing -g` |
+
+### Library & Framework Skills
+| Skill | What it covers | Install |
+|-------|---------------|---------|
+| [zod-skill](https://github.com/anivar/zod-skill) | Zod v4 schema validation, parsing, error handling | `npx skills add anivar/zod-skill -g` |
+| [redux-saga-skill](https://github.com/anivar/redux-saga-skill) | Redux-Saga effects, fork model, channels, RTK | `npx skills add anivar/redux-saga-skill -g` |
+
+### Engineering Analysis
+| Skill | What it covers | Install |
+|-------|---------------|---------|
+| [contributor-codebase-analyzer](https://github.com/anivar/contributor-codebase-analyzer) | Code analysis, annual reviews, promotion readiness | `npx skills add anivar/contributor-codebase-analyzer -g` |
+
+## Author
+
+**[Anivar Aravind](https://anivar.net)** — Building AI agent skills for modern JavaScript/TypeScript development.
 
 ## License
 
