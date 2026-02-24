@@ -13,7 +13,8 @@ user-invocable: false
 agentic: false
 compatibility: "zod ^4.0.0, Jest or Vitest, TypeScript ^5.5"
 metadata:
-  author: anivar
+  author: Anivar Aravind
+  author_url: https://anivar.net
   version: 1.0.0
   tags: zod, testing, jest, vitest, mock-data, property-testing, schema-validation
 ---
