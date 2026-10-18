@@ -4,18 +4,18 @@ description: >
   Testing patterns for Zod schemas using Jest and Vitest. Covers schema
   correctness testing, mock data generation, error assertion patterns,
   integration testing with API handlers and forms, snapshot testing
-  with z.toJSONSchema(), and property-based testing. Baseline: zod ^4.0.0.
+  with z.toJSONSchema(), and property-based testing. Baseline: zod ^4.6.0.
   Triggers on: test files for Zod schemas, zod-schema-faker imports,
   mentions of "test schema", "schema test", "zod mock", "zod test",
   or schema testing patterns.
 license: MIT
 user-invocable: false
 agentic: false
-compatibility: "zod ^4.0.0, Jest or Vitest, TypeScript ^5.5"
+compatibility: "zod ^4.6.0 (audited against 4.6.7), Jest or Vitest, TypeScript ^5.5"
 metadata:
   author: Anivar Aravind
   author_url: https://anivar.net
-  version: 1.0.0
+  version: 1.1.0
   tags: zod, testing, jest, vitest, mock-data, property-testing, schema-validation
 ---
 
@@ -310,6 +310,38 @@ See [references/anti-patterns.md](references/anti-patterns.md) for BAD/GOOD exam
 - No snapshot regression testing (field removal goes unnoticed)
 - Testing schema shape but not error observability (never assert on flattenError)
 - No drift detection workflow (schema changes land without mechanical review)
+
+## Zod 4.6 in Tests
+
+### Assert with `.validate()` when you only need a boolean
+
+`.validate()` returns a type guard and short-circuits on the first issue — cheaper than `.safeParse().success` for pure boolean assertions, especially on invalid inputs (up to 35x faster compiled, 5.9x uncompiled).
+
+```typescript
+const Player = z.object({ username: z.string(), xp: z.number() })
+
+it('accepts a valid player', () => {
+  expect(Player.validate({ username: 'john', xp: 3 })).toBe(true)
+})
+
+it('rejects an invalid player', () => {
+  expect(Player.validate({ username: 42, xp: 3 })).toBe(false)
+})
+```
+
+Keep `.safeParse()` for tests that assert on the parsed value or the issue list. When schemas are hot in a test suite, `z.compile()` plus `.validate()` removes most assertion overhead.
+
+### Error maps are lazy: read `result.error` before asserting messages
+
+Since 4.6, error maps (global, locale, per-schema `error`) evaluate on the first read of `result.error`, not at parse time. A test that changes `z.config()` between the parse and the assertion sees the *newer* config:
+
+```typescript
+const result = schema.safeParse(12)
+z.config(z.locales.fr())
+expect(result.error.issues[0].message).toBe('…French…') // French in 4.6, English in 4.5
+```
+
+Write the parse and the assertion against the same configuration state; do not assume the message was computed at parse time. Throwing parses (`.parse()`) are unaffected — they build the error immediately.
 
 ## References
 
