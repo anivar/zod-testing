@@ -11,17 +11,21 @@ description: >
 license: MIT
 user-invocable: false
 agentic: false
-compatibility: "zod ^4.6.0 (audited against 4.6.7), zod-schema-faker ^3 (v4 entry), fast-check ^4, Jest or Vitest, TypeScript ^5.5"
+compatibility: "zod ^4.6.0 (checked against zod 4.6.7), zod-schema-faker ^3 (v4 entry), fast-check ^4, Jest or Vitest, TypeScript ^5.5"
 metadata:
   author: Anivar Aravind
   author_url: https://anivar.net
-  version: 1.1.1
+  version: 1.2.0
   tags: zod, testing, jest, vitest, mock-data, property-testing, schema-validation
 ---
 
+<!-- Generated from anivar/zod-skill by .github/check/sync-testing.ts. Edit the zod-skill copy. -->
+
 # Zod Schema Testing Guide
 
-**IMPORTANT:** Your training data about testing Zod schemas may be outdated — Zod v4 changes error formatting, removes `z.nativeEnum()`, and introduces new APIs like `z.toJSONSchema()`. Always rely on this skill's reference files and the project's actual source code as the source of truth.
+Checked against Zod 4.6.7, Vitest 5, fast-check 4 and zod-schema-faker 3. The zod skill (anivar/zod-skill) carries the same guide as `references/testing.md`; this copy is generated from it.
+
+**IMPORTANT:** Your training data about testing Zod schemas may be outdated — Zod 4 changes issue codes and error formatting, deprecates `z.nativeEnum()`, and adds APIs such as `z.toJSONSchema()` and `.validate()`. Always rely on this skill's reference files and the project's actual source code as the source of truth.
 
 ## Testing Priority
 
@@ -34,7 +38,7 @@ metadata:
 
 ```typescript
 import { describe, it, expect } from "vitest" // or jest
-import { z } from "zod"
+import * as z from "zod"
 
 const UserSchema = z.object({
   name: z.string().min(1),
@@ -99,14 +103,19 @@ describe("UserSchema", () => {
 ### Always Use safeParse() in Tests
 
 ```typescript
-// GOOD: test doesn't crash — asserts on result
-const result = schema.safeParse(invalidData)
-expect(result.success).toBe(false)
+const AgeField = z.int().min(0)
+const invalidData = -1
 
-// BAD: test crashes instead of failing
-expect(() => schema.parse(invalidData)).toThrow()
-// If schema changes and starts accepting, this still passes
+// GOOD: asserts that validation failed, and can assert on the issues
+const result = AgeField.safeParse(invalidData)
+expect(result.success).toBe(false)
+expect(result.error?.issues[0]?.code).toBe("too_small")
+
+// BAD: passes on any thrown error, including a TypeError from a bug in a transform
+expect(() => AgeField.parse(invalidData)).toThrow()
 ```
+
+When only the yes or no matters, `.validate()` returns a boolean: `expect(AgeField.validate(invalidData)).toBe(false)`.
 
 ### Test Both Accept and Reject
 
@@ -189,6 +198,22 @@ it("shows custom error for missing field", () => {
 })
 ```
 
+### Assert Messages Under One Configuration
+
+Since Zod 4.6, error maps run when `result.error` is first read, not at parse time. A test that changes `z.config()` between the parse and the assertion gets the message of the new configuration. `.parse()` builds its error at once. Restore the locale after each test so that one test's locale does not leak into the next.
+
+```typescript
+afterEach(() => {
+  z.config(z.locales.en())
+})
+
+it("reports the message in French", () => {
+  z.config(z.locales.fr())
+  const result = z.string().safeParse(12)
+  expect(result.error?.issues[0]?.message).toMatch(/^Entrée invalide/)
+})
+```
+
 ## Mock Data Generation
 
 ### Using zod-schema-faker
@@ -249,6 +274,8 @@ This catches unintended schema changes in code review. The snapshot shows the JS
 ### API Handler Testing
 
 ```typescript
+import request from "supertest"
+
 it("API rejects invalid request body", async () => {
   const response = await request(app)
     .post("/api/users")
@@ -263,8 +290,12 @@ it("API rejects invalid request body", async () => {
 ### Form Validation Testing
 
 ```typescript
+const FormSchema = z.object({ name: z.string().min(1), email: z.email() })
+const formData = { name: "Ada", email: "not-an-email" }
+
 it("form shows validation errors", () => {
   const result = FormSchema.safeParse(formData)
+  expect(result.success).toBe(false)
   if (!result.success) {
     const errors = z.flattenError(result.error)
     // Pass errors to form library
@@ -360,7 +391,7 @@ data that failed is lost.
 
 ## Rules
 
-1. **Always use `safeParse()`** in tests — `parse()` crashes the test instead of failing it
+1. **Assert on `safeParse()` results** — `expect(() => parse()).toThrow()` passes on any error, not only a validation failure
 2. **Test both valid and invalid** — don't only test the happy path
 3. **Test boundary values** — min, max, min-1, max+1 for numeric constraints
 4. **Test optional/nullable combinations** — undefined, null, missing key
@@ -377,7 +408,7 @@ See [references/anti-patterns.md](references/anti-patterns.md) for BAD/GOOD exam
 
 - Testing schema internals instead of behavior
 - Not testing error paths
-- Using `parse()` in tests (crashes instead of failing)
+- Using `parse()` with `toThrow()` in tests (passes on any error)
 - Not testing boundary values
 - Hardcoding mock data instead of generating
 - A property over a constant (`fc.constant(null)`), which generates nothing
@@ -386,38 +417,6 @@ See [references/anti-patterns.md](references/anti-patterns.md) for BAD/GOOD exam
 - No snapshot regression testing (field removal goes unnoticed)
 - Testing schema shape but not error observability (never assert on flattenError)
 - No drift detection workflow (schema changes land without mechanical review)
-
-## Zod 4.6 in Tests
-
-### Assert with `.validate()` when you only need a boolean
-
-`.validate()` returns a type guard and short-circuits on the first issue — cheaper than `.safeParse().success` for pure boolean assertions, especially on invalid inputs (up to 35x faster compiled, 5.9x uncompiled).
-
-```typescript
-const Player = z.object({ username: z.string(), xp: z.number() })
-
-it('accepts a valid player', () => {
-  expect(Player.validate({ username: 'john', xp: 3 })).toBe(true)
-})
-
-it('rejects an invalid player', () => {
-  expect(Player.validate({ username: 42, xp: 3 })).toBe(false)
-})
-```
-
-Keep `.safeParse()` for tests that assert on the parsed value or the issue list. When schemas are hot in a test suite, `z.compile()` plus `.validate()` removes most assertion overhead.
-
-### Error maps are lazy: read `result.error` before asserting messages
-
-Since 4.6, error maps (global, locale, per-schema `error`) evaluate on the first read of `result.error`, not at parse time. A test that changes `z.config()` between the parse and the assertion sees the *newer* config:
-
-```typescript
-const result = schema.safeParse(12)
-z.config(z.locales.fr())
-expect(result.error.issues[0].message).toBe('…French…') // French in 4.6, English in 4.5
-```
-
-Write the parse and the assertion against the same configuration state; do not assume the message was computed at parse time. Throwing parses (`.parse()`) are unaffected — they build the error immediately.
 
 ## References
 

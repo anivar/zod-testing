@@ -17,6 +17,6 @@ Created by **[Anivar Aravind](https://anivar.net)**
 ---
 
 Merged because testing schemas is not a separate discipline from writing them.
-Keeping the guidance in one place is also the only way to stop the two copies
-drifting apart as Zod moves — it is at 4.4.3 as of August 2026, and the APIs
-worth teaching change with it.
+The guide in this repository is generated from the zod skill's testing references
+by `.github/check/sync-testing.ts` in anivar/zod-skill. A check in this repository
+fails when the two copies differ. Edit the zod-skill copy, then run the sync.
