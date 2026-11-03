@@ -1,0 +1,37 @@
+# Fails when this skill's guide differs from the copy generated from anivar/zod-skill.
+# The zod-skill testing references are the source; fix a failure by running the sync there.
+name: sync
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: zod-testing
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: anivar/zod-skill
+          ref: main
+          path: zod-skill
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - name: The guide matches zod-skill main
+        working-directory: zod-skill/.github/check
+        env:
+          ZOD_TESTING_ROOT: ${{ github.workspace }}/zod-testing
+        run: bun sync-testing.ts --check
