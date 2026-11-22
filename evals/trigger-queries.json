@@ -1,0 +1,66 @@
+[
+  {
+    "query": "write tests for src/schemas/order.ts — it must reject negative quantities and a missing sku",
+    "should_trigger": true
+  },
+  {
+    "query": "generate realistic fake data from our zod User schema for the test fixtures",
+    "should_trigger": true
+  },
+  {
+    "query": "add property-based tests for the address schema, fast-check is already installed",
+    "should_trigger": true
+  },
+  {
+    "query": "test that the API handler returns a 400 with the issue path when the body fails the zod schema",
+    "should_trigger": true
+  },
+  {
+    "query": "snapshot the JSON Schema of our public event schemas so any change shows up in review",
+    "should_trigger": true
+  },
+  {
+    "query": "my test asserted on error.message for a parse failure and broke after upgrading zod to v4, how should it assert",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I test this refine that checks the end date is after the start date",
+    "should_trigger": true
+  },
+  {
+    "query": "test that the signup form using zodResolver shows the right error under the email field",
+    "should_trigger": true
+  },
+  {
+    "query": "write a zod schema for the checkout payload",
+    "should_trigger": false
+  },
+  {
+    "query": "write tests for the cart reducer",
+    "should_trigger": false
+  },
+  {
+    "query": "test the yup schema behind the profile form",
+    "should_trigger": false
+  },
+  {
+    "query": "generate 500 fake users with faker.js for the seed script",
+    "should_trigger": false
+  },
+  {
+    "query": "property test our sort function with fast-check",
+    "should_trigger": false
+  },
+  {
+    "query": "migrate our schemas to zod 4",
+    "should_trigger": false
+  },
+  {
+    "query": "validate database rows against a JSON Schema in python",
+    "should_trigger": false
+  },
+  {
+    "query": "set coverage thresholds in jest.config.ts",
+    "should_trigger": false
+  }
+]

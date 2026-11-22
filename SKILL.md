@@ -1,21 +1,19 @@
 ---
 name: zod-testing
 description: >
-  Testing patterns for Zod schemas using Jest and Vitest. Covers schema
-  correctness testing, mock data generation, error assertion patterns,
-  integration testing with API handlers and forms, snapshot testing
-  with z.toJSONSchema(), and property-based testing. Baseline: zod ^4.6.0.
-  Triggers on: test files for Zod schemas, zod-schema-faker imports,
-  mentions of "test schema", "schema test", "zod mock", "zod test",
-  or schema testing patterns.
+  Patterns for testing Zod schemas with Jest or Vitest: valid and invalid cases, asserting issues
+  and error paths, mock data from zod-schema-faker, property-based tests with fast-check, JSON
+  Schema snapshots, and schemas inside API handlers and forms. Baseline: zod ^4.6.0. Use this skill
+  whenever the user writes or fixes a test for a Zod schema, or needs test data built from a schema,
+  even if they only say "test this validation". Triggers on: test files that import zod or a schema,
+  zod-schema-faker, fast-check with zod, "schema test", "zod mock", "zod test", "test the
+  validation".
 license: MIT
-user-invocable: false
-agentic: false
 compatibility: "zod ^4.6.0 (checked against zod 4.6.7), zod-schema-faker ^3 (v4 entry), fast-check ^4, Jest or Vitest, TypeScript ^5.5"
 metadata:
   author: Anivar Aravind
   author_url: https://anivar.net
-  version: 1.2.0
+  version: 1.2.1
   tags: zod, testing, jest, vitest, mock-data, property-testing, schema-validation
 ---
 
@@ -26,6 +24,21 @@ metadata:
 Checked against Zod 4.6.7, Vitest 5, fast-check 4 and zod-schema-faker 3. The zod skill (anivar/zod-skill) carries the same guide as `references/testing.md`; this copy is generated from it.
 
 **IMPORTANT:** Your training data about testing Zod schemas may be outdated — Zod 4 changes issue codes and error formatting, deprecates `z.nativeEnum()`, and adds APIs such as `z.toJSONSchema()` and `.validate()`. Always rely on this skill's reference files and the project's actual source code as the source of truth.
+
+## Contents
+
+- Testing Priority
+- Core Pattern
+- Testing Approaches
+- Schema Correctness Testing
+- Error Assertion Patterns
+- Mock Data Generation
+- Snapshot Testing with JSON Schema
+- Integration Testing
+- Property-Based Testing
+- Rules
+- Anti-Patterns
+- References
 
 ## Testing Priority
 
